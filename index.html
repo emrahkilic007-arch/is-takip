@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>İş Takip — Defter</title>
+<meta name="theme-color" content="#121820">
+<meta name="description" content="Yapılacak işleri hatırlatıcı, puanlama ve tamamlanma analiziyle takip eden kişisel iş defteri.">
+<link rel="manifest" href="./manifest.json">
+<link rel="icon" href="./icons/icon-192.png">
+<link rel="apple-touch-icon" href="./icons/icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg: #121820;
+    --panel: #1a222c;
+    --panel-2: #1f2937;
+    --line: #2a3441;
+    --gold: #c9a227;
+    --gold-soft: #e0bf5c;
+    --teal: #4c9a7a;
+    --red: #c0524b;
+    --text: #ede7da;
+    --text-muted: #8b93a0;
+    --radius: 10px;
+  }
+  *{ box-sizing: border-box; }
+  body{
+    margin:0;
+    background: var(--bg);
+    background-image:
+      radial-gradient(circle at 15% 0%, rgba(201,162,39,0.06), transparent 40%),
+      radial-gradient(circle at 85% 100%, rgba(76,154,122,0.05), transparent 40%);
+    color: var(--text);
+    font-family: 'Inter', system-ui, sans-serif;
+    -webkit-tap-highlight-color: transparent;
+    padding-bottom: 60px;
+  }
+  ::selection{ background: var(--gold); color: #12181f; }
+
+  header.topbar{
+    padding: 28px 20px 20px;
+    border-bottom: 1px solid var(--line);
+    display:flex; flex-direction:column; gap:4px;
+  }
+  header.topbar .eyebrow{
+    font-family:'JetBrains Mono', monospace;
+    font-size:11px; letter-spacing:.12em; text-transform:uppercase;
+    color: var(--gold-soft);
+  }
+  header.topbar h1{
+    font-family:'Fraunces', serif;
+    font-weight:700; font-size:28px; margin:2px 0 0;
+    letter-spacing:-.01em;
+  }
+  header.topbar p{
+    margin:4px 0 0; color: var(--text-muted); font-size:13.5px;
+  }
+
+  .notif-row{
+    display:flex; align-items:center; gap:8px;
+    margin-top:12px; font-size:12.5px; color:var(--text-muted);
+  }
+  .notif-row button{
+    background:none; border:1px solid var(--line); color:var(--gold-soft);
+    padding:6px 10px; border-radius:20px; font-size:12px; cursor:pointer;
+    font-family:'Inter',sans-serif;
+  }
+  .notif-row button:active{ transform: scale(0.96); }
+
+  /* STATS */
+  .stats-grid{
+    display:grid; grid-template-columns: 1.3fr 1fr 1fr;
+    gap:10px; padding: 18px 20px 4px;
+  }
+  .seal{
+    grid-row: span 2;
+    background: radial-gradient(circle at 30% 20%, #24303d, var(--panel) 70%);
+    border:1px solid var(--line);
+    border-radius: 50%;
+    aspect-ratio:1/1;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    position:relative;
+  }
+  .seal::before{
+    content:"";
+    position:absolute; inset:8px;
+    border:1.5px dashed rgba(201,162,39,0.35);
+    border-radius:50%;
+  }
+  .seal .num{
+    font-family:'Fraunces', serif; font-weight:700; font-size:34px; color: var(--gold-soft);
+    transition: transform .25s ease;
+  }
+  .seal.pulse .num{ transform: scale(1.18); }
+  .seal .lbl{
+    font-family:'JetBrains Mono',monospace; font-size:10px; letter-spacing:.1em;
+    text-transform:uppercase; color:var(--text-muted); margin-top:2px;
+  }
+  .stat-card{
+    background: var(--panel);
+    border:1px solid var(--line);
+    border-radius: var(--radius);
+    padding:12px 14px;
+    display:flex; flex-direction:column; justify-content:center;
+  }
+  .stat-card .num{ font-family:'JetBrains Mono',monospace; font-weight:700; font-size:20px; }
+  .stat-card .lbl{ font-size:11.5px; color:var(--text-muted); margin-top:2px; }
+  .stat-card.done .num{ color: var(--teal); }
+  .stat-card.pending .num{ color: var(--gold-soft); }
+
+  /* ADD FORM */
+  .panel{
+    margin: 18px 20px 0;
+    background: var(--panel);
+    border:1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 16px;
+  }
+  .panel h2{
+    font-family:'Fraunces', serif; font-size:16px; margin:0 0 12px; font-weight:600;
+    display:flex; align-items:center; gap:8px;
+  }
+  .panel h2::before{
+    content:""; width:5px; height:16px; background:var(--gold); display:inline-block; border-radius:2px;
+  }
+  label{ display:block; font-size:11.5px; color:var(--text-muted); margin: 10px 0 4px; }
+  label:first-of-type{ margin-top:0; }
+  input[type=text], textarea, input[type=datetime-local]{
+    width:100%; background: var(--panel-2); border:1px solid var(--line);
+    color: var(--text); border-radius:8px; padding:10px 11px; font-size:14.5px;
+    font-family:'Inter',sans-serif;
+  }
+  textarea{ resize: vertical; min-height:52px; }
+  input:focus, textarea:focus{ outline:2px solid var(--gold); outline-offset:1px; }
+  .row2{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  select{
+    width:100%; background: var(--panel-2); border:1px solid var(--line); color:var(--text);
+    border-radius:8px; padding:10px 11px; font-size:14.5px; font-family:'Inter',sans-serif;
+  }
+  .add-btn{
+    margin-top:14px; width:100%; background: var(--gold); color:#1a1508; border:none;
+    font-weight:700; padding:12px; border-radius:8px; font-size:14.5px; cursor:pointer;
+    font-family:'Inter',sans-serif;
+  }
+  .add-btn:active{ transform: scale(0.99); }
+
+  /* TASK LIST */
+  .list-section{ margin: 22px 20px 0; }
+  .list-section h2{
+    font-family:'Fraunces', serif; font-size:16px; margin:0 0 10px; font-weight:600;
+    display:flex; align-items:center; justify-content:space-between;
+  }
+  .filter-tabs{ display:flex; gap:6px; }
+  .filter-tabs button{
+    background:none; border:1px solid var(--line); color:var(--text-muted);
+    font-size:11.5px; padding:5px 10px; border-radius:20px; cursor:pointer;
+    font-family:'Inter',sans-serif;
+  }
+  .filter-tabs button.active{ background: var(--gold); color:#1a1508; border-color: var(--gold); font-weight:600; }
+
+  .task-card{
+    background: var(--panel);
+    border:1px solid var(--line);
+    border-left: 3px solid var(--line);
+    border-radius: var(--radius);
+    padding: 14px;
+    margin-bottom: 10px;
+    transition: border-color .2s, opacity .2s;
+  }
+  .task-card.completed{ border-left-color: var(--teal); opacity:.72; }
+  .task-card.overdue{ border-left-color: var(--red); }
+
+  .task-top{ display:flex; align-items:flex-start; gap:12px; }
+  .check{
+    flex-shrink:0; width:26px; height:26px; border-radius:50%;
+    border:2px solid var(--gold-soft); background:transparent;
+    display:flex; align-items:center; justify-content:center; cursor:pointer;
+    margin-top:1px;
+  }
+  .check.checked{ background: var(--teal); border-color: var(--teal); }
+  .check svg{ width:14px; height:14px; stroke:#0e1420; opacity:0; transition: opacity .15s; }
+  .check.checked svg{ opacity:1; }
+  .check.stamp{ animation: stampBounce .35s ease; }
+  @keyframes stampBounce{
+    0%{ transform: scale(1); } 40%{ transform: scale(1.35) rotate(-8deg); } 100%{ transform: scale(1); }
+  }
+
+  .task-body{ flex:1; min-width:0; }
+  .task-title{ font-size:15px; font-weight:600; word-break:break-word; }
+  .task-card.completed .task-title{ text-decoration: line-through; color: var(--text-muted); }
+  .task-desc{ font-size:13px; color: var(--text-muted); margin-top:4px; line-height:1.4; word-break:break-word; }
+
+  .task-meta{ display:flex; flex-wrap:wrap; gap:8px; margin-top:9px; align-items:center; }
+  .badge{
+    font-family:'JetBrains Mono',monospace; font-size:10.5px; padding:3px 8px; border-radius:20px;
+    border:1px solid var(--line); color: var(--text-muted);
+  }
+  .badge.overdue-badge{ color: var(--red); border-color: rgba(192,82,75,.5); }
+  .badge.reminded{ color: var(--gold-soft); border-color: rgba(201,162,39,.5); }
+
+  .percent-row{ display:flex; align-items:center; gap:10px; margin-top:10px; }
+  input[type=range]{
+    flex:1; accent-color: var(--gold);
+  }
+  .percent-val{
+    font-family:'JetBrains Mono',monospace; font-size:13px; font-weight:700; width:42px; text-align:right;
+    color: var(--gold-soft);
+  }
+  .task-actions{ display:flex; justify-content:flex-end; margin-top:6px; }
+  .del-btn{
+    background:none; border:none; color: var(--text-muted); font-size:11.5px; cursor:pointer;
+    font-family:'Inter',sans-serif; text-decoration:underline; padding:4px;
+  }
+  .del-btn:hover{ color: var(--red); }
+
+  .empty-state{
+    text-align:center; padding: 30px 10px; color: var(--text-muted); font-size:13.5px;
+  }
+
+  /* ANALYSIS */
+  .analysis{ margin: 24px 20px 0; }
+  .analysis h2{ font-family:'Fraunces', serif; font-size:16px; margin:0 0 10px; font-weight:600; }
+  .bar-wrap{
+    background: var(--panel); border:1px solid var(--line); border-radius: var(--radius); padding:14px;
+  }
+  .bar-track{
+    width:100%; height:14px; border-radius:20px; background: var(--panel-2); overflow:hidden;
+    display:flex; border:1px solid var(--line);
+  }
+  .bar-done{ background: var(--teal); height:100%; transition: width .3s ease; }
+  .bar-pending{ background: var(--gold); height:100%; transition: width .3s ease; }
+  .bar-legend{ display:flex; justify-content:space-between; margin-top:8px; font-size:11.5px; color:var(--text-muted); }
+  .bar-legend span.dot{ display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:5px; }
+  .dot.d{ background: var(--teal); } .dot.p{ background: var(--gold); }
+
+  .overdue-list{ margin-top:14px; }
+  .overdue-list .item{
+    font-size:12.5px; color: var(--red); padding:6px 0; border-top:1px solid var(--line);
+  }
+
+  footer{ text-align:center; color: var(--text-muted); font-size:11px; margin-top:28px; padding: 0 20px; }
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <span class="eyebrow">Kişisel İş Defteri</span>
+  <h1>İş Takip</h1>
+  <p>Yapılacakları kaydet, hatırlat, tikle ve puan kazan.</p>
+  <div class="notif-row">
+    <span id="notifStatus">Hatırlatma bildirimleri kapalı</span>
+    <button id="notifBtn" type="button">İzin ver</button>
+  </div>
+</header>
+
+<section class="stats-grid">
+  <div class="seal" id="seal">
+    <div class="num" id="totalScore">0</div>
+    <div class="lbl">Puan</div>
+  </div>
+  <div class="stat-card done">
+    <div class="num" id="doneCount">0</div>
+    <div class="lbl">Tamamlanan iş</div>
+  </div>
+  <div class="stat-card pending">
+    <div class="num" id="pendingCount">0</div>
+    <div class="lbl">Bekleyen iş</div>
+  </div>
+  <div class="stat-card" style="grid-column: 2 / span 2;">
+    <div class="num" id="avgPercent">%0</div>
+    <div class="lbl">Ortalama tamamlanma oranı</div>
+  </div>
+</section>
+
+<section class="panel">
+  <h2>Yeni İş Ekle</h2>
+  <label for="titleInput">İş başlığı</label>
+  <input type="text" id="titleInput" placeholder="Örn. Mizan sayfasını kontrol et">
+
+  <label for="descInput">Açıklama / durum notu</label>
+  <textarea id="descInput" placeholder="İşin durumu, detayları..."></textarea>
+
+  <div class="row2">
+    <div>
+      <label for="reminderInput">Hatırlatma zamanı</label>
+      <input type="datetime-local" id="reminderInput">
+    </div>
+    <div>
+      <label for="priorityInput">Öncelik</label>
+      <select id="priorityInput">
+        <option value="normal">Normal</option>
+        <option value="yuksek">Yüksek</option>
+        <option value="dusuk">Düşük</option>
+      </select>
+    </div>
+  </div>
+
+  <button class="add-btn" id="addBtn" type="button">İşi Ekle</button>
+</section>
+
+<section class="list-section">
+  <h2>
+    İşler
+    <span class="filter-tabs">
+      <button data-filter="all" class="active">Tümü</button>
+      <button data-filter="pending">Bekleyen</button>
+      <button data-filter="done">Biten</button>
+    </span>
+  </h2>
+  <div id="taskList"></div>
+</section>
+
+<section class="analysis">
+  <h2>Analiz</h2>
+  <div class="bar-wrap">
+    <div class="bar-track">
+      <div class="bar-done" id="barDone" style="width:0%"></div>
+      <div class="bar-pending" id="barPending" style="width:0%"></div>
+    </div>
+    <div class="bar-legend">
+      <span><span class="dot d"></span>Biten (<span id="legendDone">0</span>)</span>
+      <span><span class="dot p"></span>Bekleyen (<span id="legendPending">0</span>)</span>
+    </div>
+    <div class="overdue-list" id="overdueList"></div>
+  </div>
+</section>
+
+<footer>Tüm veriler yalnızca bu cihazda saklanır.</footer>
+
+<script>
+(function(){
+  const STORAGE_KEY = 'is-takip-tasks-v1';
+  let tasks = [];
+  let filter = 'all';
+  let notifTimer = null;
+
+  function load(){
+    try{
+      const raw = localStorage.getItem(STORAGE_KEY);
+      tasks = raw ? JSON.parse(raw) : [];
+    }catch(e){ tasks = []; }
+  }
+  function save(){
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
+  }
+  function uid(){ return 't' + Date.now() + Math.random().toString(36).slice(2,7); }
+
+  function fmtDate(iso){
+    if(!iso) return null;
+    const d = new Date(iso);
+    if(isNaN(d)) return null;
+    return d.toLocaleString('tr-TR', {day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit'});
+  }
+
+  function render(){
+    // stats
+    const done = tasks.filter(t=>t.completed);
+    const pending = tasks.filter(t=>!t.completed);
+    const totalScore = tasks.reduce((s,t)=> s + (t.pointAwarded ? 1 : 0), 0);
+    document.getElementById('totalScore').textContent = totalScore;
+    document.getElementById('doneCount').textContent = done.length;
+    document.getElementById('pendingCount').textContent = pending.length;
+    const avg = tasks.length ? Math.round(tasks.reduce((s,t)=>s+(t.percent||0),0)/tasks.length) : 0;
+    document.getElementById('avgPercent').textContent = '%' + avg;
+
+    const totalForBar = tasks.length || 1;
+    document.getElementById('barDone').style.width = (done.length/totalForBar*100) + '%';
+    document.getElementById('barPending').style.width = (pending.length/totalForBar*100) + '%';
+    document.getElementById('legendDone').textContent = done.length;
+    document.getElementById('legendPending').textContent = pending.length;
+
+    const now = new Date();
+    const overdue = pending.filter(t => t.reminder && new Date(t.reminder) < now);
+    const overdueEl = document.getElementById('overdueList');
+    overdueEl.innerHTML = overdue.length
+      ? overdue.map(t => `<div class="item">⚠ "${escapeHtml(t.title)}" — hatırlatma zamanı geçti (${fmtDate(t.reminder)})</div>`).join('')
+      : '';
+
+    // list
+    let visible = tasks;
+    if(filter === 'pending') visible = tasks.filter(t=>!t.completed);
+    if(filter === 'done') visible = tasks.filter(t=>t.completed);
+    // sort: overdue first, then by reminder time, then newest
+    visible = visible.slice().sort((a,b)=>{
+      const aOver = a.reminder && !a.completed && new Date(a.reminder) < now;
+      const bOver = b.reminder && !b.completed && new Date(b.reminder) < now;
+      if(aOver !== bOver) return aOver ? -1 : 1;
+      return (b.createdAt||0) - (a.createdAt||0);
+    });
+
+    const listEl = document.getElementById('taskList');
+    if(!visible.length){
+      listEl.innerHTML = '<div class="empty-state">Bu listede iş yok. Yukarıdan yeni bir iş ekleyebilirsin.</div>';
+      return;
+    }
+
+    listEl.innerHTML = visible.map(t => {
+      const isOverdue = t.reminder && !t.completed && new Date(t.reminder) < now;
+      const cls = ['task-card'];
+      if(t.completed) cls.push('completed');
+      if(isOverdue) cls.push('overdue');
+      const priorityLabel = t.priority === 'yuksek' ? 'Yüksek öncelik' : (t.priority === 'dusuk' ? 'Düşük öncelik' : 'Normal öncelik');
+      return `
+      <div class="${cls.join(' ')}" data-id="${t.id}">
+        <div class="task-top">
+          <button class="check ${t.completed?'checked':''}" data-action="toggle" data-id="${t.id}" aria-label="Tamamlandı işaretle">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+          </button>
+          <div class="task-body">
+            <div class="task-title">${escapeHtml(t.title)}</div>
+            ${t.desc ? `<div class="task-desc">${escapeHtml(t.desc)}</div>` : ''}
+            <div class="task-meta">
+              <span class="badge">${priorityLabel}</span>
+              ${t.reminder ? `<span class="badge ${isOverdue?'overdue-badge':''}">${isOverdue?'Süresi geçti · ':'Hatırlatma · '}${fmtDate(t.reminder)}</span>` : ''}
+              ${t.notified ? `<span class="badge reminded">Bildirim gönderildi</span>` : ''}
+            </div>
+            <div class="percent-row">
+              <input type="range" min="0" max="100" step="5" value="${t.percent||0}" data-action="percent" data-id="${t.id}">
+              <span class="percent-val">%${t.percent||0}</span>
+            </div>
+            <div class="task-actions">
+              <button class="del-btn" data-action="delete" data-id="${t.id}">Sil</button>
+            </div>
+          </div>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  function escapeHtml(s){
+    return (s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+
+  function addTask(){
+    const title = document.getElementById('titleInput').value.trim();
+    if(!title){ document.getElementById('titleInput').focus(); return; }
+    const desc = document.getElementById('descInput').value.trim();
+    const reminder = document.getElementById('reminderInput').value;
+    const priority = document.getElementById('priorityInput').value;
+    tasks.push({
+      id: uid(),
+      title, desc,
+      reminder: reminder || null,
+      priority,
+      percent: 0,
+      completed: false,
+      pointAwarded: false,
+      notified: false,
+      createdAt: Date.now()
+    });
+    document.getElementById('titleInput').value = '';
+    document.getElementById('descInput').value = '';
+    document.getElementById('reminderInput').value = '';
+    document.getElementById('priorityInput').value = 'normal';
+    save(); render();
+  }
+
+  function toggleTask(id, btnEl){
+    const t = tasks.find(x=>x.id===id);
+    if(!t) return;
+    t.completed = !t.completed;
+    if(t.completed){
+      t.percent = 100;
+      if(!t.pointAwarded) t.pointAwarded = true;
+      if(btnEl) btnEl.classList.add('stamp');
+      pulseSeal();
+    } else {
+      t.pointAwarded = false;
+    }
+    save(); render();
+  }
+
+  function pulseSeal(){
+    const seal = document.getElementById('seal');
+    seal.classList.add('pulse');
+    setTimeout(()=> seal.classList.remove('pulse'), 260);
+  }
+
+  function setPercent(id, val){
+    const t = tasks.find(x=>x.id===id);
+    if(!t) return;
+    t.percent = Number(val);
+    if(t.percent >= 100 && !t.completed){
+      t.completed = true;
+      if(!t.pointAwarded){ t.pointAwarded = true; pulseSeal(); }
+    } else if(t.percent < 100 && t.completed){
+      t.completed = false;
+      t.pointAwarded = false;
+    }
+    save(); render();
+  }
+
+  function deleteTask(id){
+    tasks = tasks.filter(t=>t.id!==id);
+    save(); render();
+  }
+
+  document.getElementById('addBtn').addEventListener('click', addTask);
+
+  document.getElementById('taskList').addEventListener('click', function(e){
+    const btn = e.target.closest('[data-action]');
+    if(!btn) return;
+    const id = btn.dataset.id;
+    const action = btn.dataset.action;
+    if(action === 'toggle') toggleTask(id, btn);
+    if(action === 'delete'){
+      if(confirm('Bu işi silmek istediğine emin misin?')) deleteTask(id);
+    }
+  });
+  document.getElementById('taskList').addEventListener('input', function(e){
+    const el = e.target.closest('[data-action="percent"]');
+    if(!el) return;
+    setPercent(el.dataset.id, el.value);
+    const label = el.parentElement.querySelector('.percent-val');
+    if(label) label.textContent = '%' + el.value;
+  });
+
+  document.querySelectorAll('.filter-tabs button').forEach(b=>{
+    b.addEventListener('click', ()=>{
+      document.querySelectorAll('.filter-tabs button').forEach(x=>x.classList.remove('active'));
+      b.classList.add('active');
+      filter = b.dataset.filter;
+      render();
+    });
+  });
+
+  // Notifications / reminders
+  function updateNotifStatus(){
+    const statusEl = document.getElementById('notifStatus');
+    const btnEl = document.getElementById('notifBtn');
+    if(!('Notification' in window)){
+      statusEl.textContent = 'Bu tarayıcı bildirimleri desteklemiyor';
+      btnEl.style.display = 'none';
+      return;
+    }
+    if(Notification.permission === 'granted'){
+      statusEl.textContent = 'Hatırlatma bildirimleri açık';
+      btnEl.style.display = 'none';
+    } else {
+      statusEl.textContent = 'Hatırlatma bildirimleri kapalı';
+      btnEl.style.display = 'inline-block';
+    }
+  }
+  document.getElementById('notifBtn').addEventListener('click', ()=>{
+    if(!('Notification' in window)) return;
+    Notification.requestPermission().then(updateNotifStatus);
+  });
+
+  function checkReminders(){
+    if(!('Notification' in window) || Notification.permission !== 'granted') return;
+    const now = new Date();
+    let changed = false;
+    tasks.forEach(t=>{
+      if(!t.completed && t.reminder && !t.notified && new Date(t.reminder) <= now){
+        try{
+          new Notification('İş Takip Hatırlatması', { body: t.title, tag: t.id });
+        }catch(e){}
+        t.notified = true;
+        changed = true;
+      }
+    });
+    if(changed){ save(); render(); }
+  }
+
+  load();
+  updateNotifStatus();
+  render();
+  checkReminders();
+  notifTimer = setInterval(checkReminders, 30000);
+  setInterval(render, 60000); // refresh overdue styling every minute
+
+  if('serviceWorker' in navigator){
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('./sw.js').catch(()=>{});
+    });
+  }
+})();
+</script>
+</body>
+</html>
